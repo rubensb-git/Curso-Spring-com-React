@@ -1,15 +1,17 @@
 package com.springreact.minhasfinancas.service;
 
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.Optional;
 
 import org.assertj.core.api.Assertions;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
@@ -24,20 +26,48 @@ import com.springreact.minhasfinancas.service.impl.UsuarioServiceImpl;
 @ActiveProfiles("test")
 public class UsuarioServiceTest {
 	
-	
-	UsuarioService service;		
+	@SpyBean
+	UsuarioServiceImpl service;		
 	
 	@MockBean
 	UsuarioRepository repository;		
 	
-	//As injeções de dependências foram retiradas porque agora faremos testes unitários e não mais integrados. O Mock será responsável pelos testes. 
-	//Não precisando mais da base real. 
-	// O mock deve ser injetado dentro da classe que você quer testar. 
+	//@Test(expected = Test.None.class)
+	@Test
+	public void deveSalvarUmUsuario() {
+		//cenário
+		Mockito.doNothing().when(service).validarEmail(Mockito.anyString());
+		
+		Usuario usuario = Usuario.builder().id(1l).nome("nome").email("email@email.com").senha("senha").build();
+		
+		Mockito.when(repository.save(Mockito.any(Usuario.class))).thenReturn(usuario);
+		
+		//ação
+		Usuario usuarioSalvo = service.salvarUsuario(new Usuario()); 
+				
+		//verificação
+		Assertions.assertThat(usuarioSalvo).isNotNull();
+		Assertions.assertThat(usuarioSalvo.getId()).isEqualTo(1l);
+		Assertions.assertThat(usuarioSalvo.getNome()).isEqualTo("nome");
+		Assertions.assertThat(usuarioSalvo.getEmail()).isEqualTo("email@email.com");
+		Assertions.assertThat(usuarioSalvo.getSenha()).isEqualTo("senha");
+		
+	}
 	
-	//Será executado antes da execução dos testes por conta da Annotation before. O @Before não funciona no JUnit5, precisa ser @BeforeEach
-	@BeforeEach
-	public void setUp() {		
-		service = new UsuarioServiceImpl(repository);		
+	//@Test(expected = RegraNegocioException.class)
+	@Test
+	public void naoDeveSalvarUmUsuarioComEmailJaCadastrado() {
+		//Cenário
+		String email = "email@email.com";
+		Usuario usuario = Usuario.builder().email(email).build();		
+		Mockito.doThrow(RegraNegocioException.class).when(service).validarEmail(email);		
+		
+		//Ação
+		service.salvarUsuario(new Usuario());
+		
+		//Verificação
+		Mockito.verify(repository, Mockito.never()).save(usuario);		
+
 	}
 	
 	//@Test(expected = Test.None.class)
@@ -98,7 +128,7 @@ public class UsuarioServiceTest {
 				
 	}
 	
-	//@Test(expected = RegraNegocioException.class) // Aqui eu espero que ele lance a exceção RegraNegocioExcpetion
+	//@Test(expected = RegraNegocioException.class) // Aqui eu espero que ele lance a exceção RegraNegocioExcpetion. 
 	@Test
 	public void deveLancarErroAoValidarEmailQuandoExistirEmailCadastrado() {
 		
